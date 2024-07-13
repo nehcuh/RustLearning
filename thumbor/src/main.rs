@@ -1,10 +1,23 @@
-use axum::{extract::Path, http::StatusCode, Router};
-use percent_encoding::percent_decode_str;
+use anyhow::Result;
+use axum::{
+    extract::{Extension, Path},
+    http::{HeaderMap, HeaderValue, StatusCode},
+    routing::get,
+    Router,
+};
+use bytes::Bytes;
+use lru::LruCache;
+use percent_encoding::{percent_decode_str, percent_encode, NON_ALPHANUMERIC};
 use serde::Deserialize;
+use std::collections::hash_map::DefaultHasher;
+use std::convert::TryInto;
+use std::hash::{Hash, Hasher};
+use std::sync::{Arc, Mutex};
+use tokio::net::TcpListener;
+use tracing::{info, instrument};
 
 mod pb;
 use pb::*;
-use tokio::net::TcpListener;
 
 // 参数使用 serde 做 Deserialize, axum 会自动识别并解析
 #[derive(Deserialize)]
@@ -13,13 +26,15 @@ struct Params {
     url: String,
 }
 
+type Cache = Arc<Mutex<LruCache<u64, Bytes>>>;
+
 #[tokio::main]
 async fn main() {
     // 初始化 tracing
     tracing_subscriber::fmt::init();
 
     // 构建路由
-    let app = Router::new().route("/image/:spec/:url", axum::routing::get(generate));
+    let app = Router::new().route("/image/:spec/:url", get(generate));
 
     let listener = TcpListener::bind("127.0.0.1:3456").await.unwrap();
     tracing::debug!("listening on 3456",);
@@ -29,11 +44,59 @@ async fn main() {
 }
 
 // 目前我们就只把参数解析出来
-async fn generate(Path(Params { spec, url }): Path<Params>) -> Result<String, StatusCode> {
+async fn generate(
+    Path(Params { spec, url }): Path<Params>,
+    Extension(cache): Extension<Cache>,
+) -> Result<(HeaderMap, Vec<u8>), StatusCode> {
     let url = percent_decode_str(&url).decode_utf8_lossy();
     let spec: ImageSpec = spec
         .as_str()
         .try_into()
         .map_err(|_| StatusCode::BAD_REQUEST)?;
-    Ok(format!("url: {}\n spec: {:#?}", url, spec))
+
+    let url: &str = &percent_decode_str(&url).decode_utf8_lossy();
+    let data = retrieve_image(&url, cache)
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    // TODO: 处理图片
+
+    let mut headers = HeaderMap::new();
+    headers.insert("content-type", HeaderValue::from_static("image/jpeg"));
+    Ok((headers, data.to_vec()))
+}
+
+#[instrument(level = "info", skip(cache))]
+async fn retrieve_image(url: &str, cache: Cache) -> Result<Bytes> {
+    let mut hasher = DefaultHasher::new();
+    url.hash(&mut hasher);
+    let key = hasher.finish();
+
+    let g = &mut cache.lock().unwrap();
+    let data = match g.get(&key) {
+        Some(v) => {
+            info!("Match cache {}", key);
+            v.to_owned()
+        }
+        None => {
+            info!("Retrieve url");
+            let resp = reqwest::get(url).await?;
+            let data = resp.bytes().await?;
+            g.put(key, data.clone());
+            data
+        }
+    };
+    Ok(data)
+}
+
+// 调试辅助函数
+fn print_test_url(url: &str) {
+    use std::borrow::Borrow;
+    let spec1 = Spec::new_resize(500, 800, resize::SampleFilter::CatmullRom);
+    let spec2 = Spec::new_watermark(20, 20);
+    let spec3 = Spec::new_filter(filter::Filter::Marine);
+    let image_spec = ImageSpec::new(vec![spec1, spec2, spec3]);
+    let s: String = image_spec.borrow().into();
+    let test_image = percent_encode(url.as_bytes(), NON_ALPHANUMERIC).to_string();
+    println!("test url: http://localhost:3456/image/{}/{}", s, test_image);
 }
