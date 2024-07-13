@@ -1,6 +1,6 @@
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     prost_build::Config::new()
         .out_dir("src/pb")
-        .compile_protos(&["abi.proto"], &["."])?;
-    Ok(())
+        .compile_protos(&["abi.proto"], &["."])
+        .unwrap();
 }

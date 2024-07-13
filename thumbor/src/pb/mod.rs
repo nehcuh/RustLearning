@@ -1,14 +1,12 @@
-pub mod abi;
+mod abi;
 pub use abi::*;
-
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use percent_encoding::percent_decode_str;
 use photon_rs::transform::SamplingFilter;
 use prost::Message;
 
 impl ImageSpec {
-    pub fn new(specs: Vec<Spec>) -> Self {
-        Self { specs }
+    pub fn new(spec: Vec<Spec>) -> Self {
+        Self { spec }
     }
 }
 
@@ -20,7 +18,7 @@ impl From<&ImageSpec> for String {
     }
 }
 
-// 让 ImageSpec 可以通过一个字符串创建。比如，s.parse().unwrap()
+// 让 ImageSpec 可以通过一个字符串创建，譬如 s.parse().unwrap()
 impl TryFrom<&str> for ImageSpec {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -29,33 +27,33 @@ impl TryFrom<&str> for ImageSpec {
     }
 }
 
-// 辅助函数，photon_rs 相应的方法里需要字符串
+// 辅助函数, photon_rs 相应方法里需要字符串
 impl filter::Filter {
     pub fn to_str(&self) -> Option<&'static str> {
         match self {
             filter::Filter::Unspecified => None,
-            filter::Filter::Oceanic => Some("oceanic"),
-            filter::Filter::Islands => Some("islands"),
-            filter::Filter::Marine => Some("marine"),
+            filter::Filter::Oceanic => Some("Oceanic"),
+            filter::Filter::Islands => Some("Islands"),
+            filter::Filter::Marine => Some("Marine"),
         }
     }
 }
 
-// 在我们定义的 SampleFilter 和 photon_rs 的 SamplingFilter 间转换
+// 在我们定义的 SampleFilter 和 photon_rs 的 SampleFilter 间转换
 impl From<resize::SampleFilter> for SamplingFilter {
     fn from(v: resize::SampleFilter) -> Self {
         match v {
             resize::SampleFilter::Undefined => SamplingFilter::Nearest,
             resize::SampleFilter::Nearest => SamplingFilter::Nearest,
             resize::SampleFilter::Triangle => SamplingFilter::Triangle,
-            resize::SampleFilter::CatmullRom => SamplingFilter::CatmullRom,
             resize::SampleFilter::Gaussian => SamplingFilter::Gaussian,
-            resize::SampleFilter::Lanczos3 => SamplingFilter::Lanczos3,
+            resize::SampleFilter::CatmullRom => SamplingFilter::CatmullRom,
+            resize::SampleFilter::Lanzcos3 => SamplingFilter::Lanczos3,
         }
     }
 }
 
-// 提供一些辅助函数，让创建一个 spec 的过程简单一些
+// 提供一些辅助函数，让创建一个 spec 过程简单一些
 impl Spec {
     pub fn new_resize_seam_carve(width: u32, height: u32) -> Self {
         Self {
@@ -101,7 +99,7 @@ mod tests {
     use std::convert::TryInto;
 
     #[test]
-    fn encoded_spec_could_be_decode() {
+    fn encode_spec_and_could_be_decoded() {
         let spec1 = Spec::new_resize(600, 600, resize::SampleFilter::CatmullRom);
         let spec2 = Spec::new_filter(filter::Filter::Marine);
         let image_spec = ImageSpec::new(vec![spec1, spec2]);

@@ -1,9 +1,9 @@
-syntax = "proto3";
+syntax="proto3";
 
-package abi; // 这个名字会用作编译结果，prost 会产生: abi.rs
+package abi; // 这个名字被用作编译结果，prost 会编译生成 abi.rs
 
-// 一个 ImageSpec 是一个有序的数组，服务器按照 spec 顺序处理
-message ImageSpec { repeated Spec specs = 1; }
+// 一个 ImageSpec 是一个有序数组，服务器按照 spec 顺序处理
+message ImageSpec {repeated Spec spec=1;}
 
 // 处理图片改变大小
 message Resize {
@@ -23,7 +23,7 @@ message Resize {
         TRIANGLE = 2;
         CATMULL_ROM = 3;
         GAUSSIAN = 4;
-        LANCZOS3 = 5;
+        LANZCOS3 = 5;
     }
 
     SampleFilter filter = 4;
@@ -39,10 +39,13 @@ message Crop {
 
 // 处理水平翻转
 message Fliph {}
+
 // 处理垂直翻转
 message Flipv {}
+
 // 处理对比度
-message Contrast { float contrast = 1; }
+message Contrast {float contrast = 1;}
+
 // 处理滤镜
 message Filter {
     enum Filter {
@@ -60,7 +63,7 @@ message Watermark {
     uint32 y = 2;
 }
 
-// 一个 spec 可以包含上述的处理方式之一
+// 一个 Spec 包含上述的处理方式之一
 message Spec {
     oneof data {
         Resize resize = 1;
