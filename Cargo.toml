@@ -1,3 +1,2 @@
 [workspace]
-members = ["httpie", "thumbor"]
-resolver = "2"
+members = ["axum-web-app", "httpie"]

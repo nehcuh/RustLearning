@@ -38,7 +38,7 @@ struct Post {
     body: Vec<KvPair>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct KvPair {
     k: String,
     v: String,
@@ -128,4 +128,35 @@ async fn main() -> Result<()> {
         SubCommand::Post(ref args) => post(client, args).await?,
     };
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_url_works() {
+        assert!(parse_url("abc").is_err());
+        assert!(parse_url("http://abc.xyz").is_ok());
+        assert!(parse_url("https://httpbin.org/post").is_ok());
+    }
+
+    #[test]
+    fn parse_kv_pair_works() {
+        assert!(parse_kv_pair("a").is_err());
+        assert_eq!(
+            parse_kv_pair("a=1").unwrap(),
+            KvPair {
+                k: "a".into(),
+                v: "1".into()
+            }
+        );
+        assert_eq!(
+            parse_kv_pair("b=").unwrap(),
+            KvPair {
+                k: "b".into(),
+                v: "".into()
+            }
+        );
+    }
 }
