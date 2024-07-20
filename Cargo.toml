@@ -1,2 +1,3 @@
 [workspace]
 members = ["httpie", "thumbor"]
+resolver = "2"

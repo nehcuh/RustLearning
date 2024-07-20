@@ -1,14 +1,15 @@
+use std::{collections::HashMap, str::FromStr};
+
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use colored::*;
 use mime::Mime;
-use reqwest::{header, Client, Response, Url};
-use std::{collections::HashMap, str::FromStr};
+use reqwest::{header, Client, Response};
 
-/// A naive httpie implementation with Rust
+/// A simple naive httpie implemented with rust
 #[derive(Parser, Debug)]
 struct Cli {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcmd: SubCommand,
 }
 
@@ -18,7 +19,7 @@ enum SubCommand {
     Post(Post),
 }
 
-/// feed get with an url and we'll retrieve the response for you
+/// Feed Get an url and we'll retrieve response for you
 #[derive(Parser, Debug)]
 struct Get {
     /// HTTP 请求的 URL
@@ -26,14 +27,13 @@ struct Get {
     url: String,
 }
 
-/// feed post with an url and optional key=value pairs. We'll post the data
-/// as JSON and retrieve the response for you
+/// Feed Post an url and optional key=value pairs, we'll post body as JSON and retrieve response for you
 #[derive(Parser, Debug)]
 struct Post {
     /// HTTP 请求的 URL
     #[arg(value_parser=parse_url)]
     url: String,
-    /// HTTP 请求的 body
+    /// HTTP 请求的 Body
     #[arg(value_parser=parse_kv_pair)]
     body: Vec<KvPair>,
 }
@@ -44,7 +44,6 @@ struct KvPair {
     v: String,
 }
 
-/// 当我们实现 FromStr trait 后，可以用 str.parse() 方法将字符串解析成 KvPair
 impl FromStr for KvPair {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -57,54 +56,47 @@ impl FromStr for KvPair {
     }
 }
 
-fn parse_url(s: &str) -> Result<String> {
-    // 这里我们仅仅检查一下 URL 是否合法
-    Ok((s.parse::<Url>()?).to_string())
-}
-
-/// 因为我们为 KvPair 实现了 FromStr，这里可以直接 s.parse() 得到 KvPair
 fn parse_kv_pair(s: &str) -> Result<KvPair> {
     Ok(s.parse::<KvPair>()?)
 }
 
-/// 处理 get 子命令
+fn parse_url(s: &str) -> Result<String> {
+    Ok((s.parse::<reqwest::Url>()?).to_string())
+}
+
 async fn get(client: Client, args: &Get) -> Result<()> {
-    let resp = client.get(&args.url).send().await?;
-    Ok(print_resp(resp).await?)
+    let response = client.get(&args.url).send().await?;
+    println!("{}", response.text().await?);
+    Ok(())
 }
 
-/// 处理 post 子命令
 async fn post(client: Client, args: &Post) -> Result<()> {
-    let mut body = HashMap::new();
-    for pair in args.body.iter() {
-        body.insert(&pair.k, &pair.v);
+    let mut headers = HashMap::new();
+    for pair in &args.body {
+        headers.insert(&pair.k, &pair.v);
     }
-    let resp = client.post(&args.url).json(&body).send().await?;
-    Ok(print_resp(resp).await?)
+    let response = client.post(&args.url).json(&headers).send().await?;
+    println!("{}", response.text().await?);
+    Ok(())
 }
 
-// 打印服务器版本号 + 状态码
 fn print_status(resp: &Response) {
     let status = format!("{:?} {}", resp.version(), resp.status()).blue();
     println!("{}\n", status);
 }
 
-// 打印服务器返回的 HTTP headers
 fn print_headers(resp: &Response) {
     for (name, val) in resp.headers() {
-        println!("{}: {:?}", name.to_string().green(), val);
+        println!("{} {:?}", name.to_string().green(), val)
     }
     print!("\n");
 }
 
-// 打印服务器返回的 HTTP Body
 fn print_body(m: Option<Mime>, body: &String) {
     match m {
-        // 对于 "application/json" 我们 pretty print
         Some(v) if v == mime::APPLICATION_JSON => {
-            println!("{}", jsonxf::pretty_print(body).unwrap().cyan())
+            println!("{}", jsonxf::pretty_print(body).unwrap().cyan());
         }
-        // 其他 mime type，直接输出
         _ => println!("{}", body),
     }
 }
@@ -115,7 +107,6 @@ fn get_content_type(resp: &Response) -> Option<Mime> {
         .map(|v| v.to_str().unwrap().parse().unwrap())
 }
 
-// 打印整个响应
 async fn print_resp(resp: Response) -> Result<()> {
     print_status(&resp);
     print_headers(&resp);
@@ -125,17 +116,13 @@ async fn print_resp(resp: Response) -> Result<()> {
     Ok(())
 }
 
-/// 程序的入口函数，因为在 HTTP 请求时，我们使用了异步处理，所以这里引入了 tokio
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let mut headers = header::HeaderMap::new();
-    // 为我们的 HTTP 客户端添加一些缺省的 HTTP 头
     headers.insert("X-POWERED-BY", "Rust".parse()?);
     headers.insert(header::USER_AGENT, "Rust Httpie".parse()?);
-    let client = reqwest::Client::builder()
-        .default_headers(headers)
-        .build()?;
+    let client = Client::builder().default_headers(headers).build()?;
     let result = match cli.subcmd {
         SubCommand::Get(ref args) => get(client, args).await?,
         SubCommand::Post(ref args) => post(client, args).await?,
