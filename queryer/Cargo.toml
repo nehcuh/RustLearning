@@ -1,0 +1,18 @@
+[package]
+name = "queryer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+async-trait = "0.1.81"
+polars = { version = "0.41.3", features = ["json", "lazy"] }
+polars-lazy = "0.41.3"
+reqwest = { version = "0.12.5", features = ["rustls-tls"] }
+sqlparser = "0.48.0"
+tokio = { version = "1.38.1", features = ["fs"] }
+tracing = "0.1.40"
+
+[dev-dependencies]
+tokio = { version = "1.38.1", features = ["full"] }
+tracing-subscriber = "0.3.18"
