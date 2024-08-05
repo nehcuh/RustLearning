@@ -1,16 +1,14 @@
 use anyhow::Result;
-use polars::{
-    io::{ndjson::infer_schema, SerReader},
-    prelude::{CsvReadOptions, CsvReader, Schema},
-    series::{ChunkCompare, Series},
-};
+use polars::{io::SerReader, prelude::CsvReadOptions, series::ChunkCompare};
+use queryer::query;
 use std::io::Cursor;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let url = "https://raw.githubusercontent.com/owid/owid-datasets/master/datasets/COVID-2019%20-%20ECDC%20(2020)/COVID-2019%20-%20ECDC%20(2020).csv";
+    // let url = "https://raw.githubusercontent.com/owid/owid-datasets/master/datasets/COVID-2019%20-%20ECDC%20(2020)/COVID-2019%20-%20ECDC%20(2020).csv";
+    /*
     let data = reqwest::get(url).await?.text().await?;
 
     // 指定 column 使用的数据类型
@@ -32,7 +30,7 @@ async fn main() -> Result<()> {
     // df.try_apply("Total confirmed cases of COVID-19", |s: &Series| {
     //     s.cast(&polars::datatypes::DataType::Float32)
     // })?;
-    println!("{:?}", df);
+    // println!("{:?}", df);
     let mask = df.column("Total confirmed cases of COVID-19")?.gt(500)?;
     let filtered = df.filter(&mask)?;
     println!(
@@ -57,5 +55,14 @@ async fn main() -> Result<()> {
             "Days since 30 daily new confirmed cases recorded",
         ])
     );
+    */
+    let url = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.csv";
+    let sql = format!(
+        "SELECT location name, total_cases, new_cases, total_deaths, new_deaths \
+        FROM {} where new_deaths >= 500 ORDER BY new_cases DESC",
+        url
+    );
+    let df1 = query(sql).await?;
+    println!("{:?}", df1);
     Ok(())
 }
