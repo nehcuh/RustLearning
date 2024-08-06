@@ -1,2 +1,2 @@
 [workspace]
-members = ["axum-web-app", "httpie"]
+members = ["axum-web-app", "httpie", "queryer"]
