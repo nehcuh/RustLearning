@@ -1,0 +1,3 @@
+[workspace]
+members = ["httpie"]
+resolver = "2"
