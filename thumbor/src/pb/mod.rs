@@ -10,7 +10,7 @@ pub use abi::*;
 use resize::SampleFilter;
 
 impl ImageSpec {
-    fn new(specs: Vec<Spec>) -> Self {
+    pub fn new(specs: Vec<Spec>) -> Self {
         Self { specs }
     }
 }

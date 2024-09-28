@@ -1,3 +1,4 @@
+pub mod mw_require_auth;
 pub mod routes_hello;
 pub mod routes_login;
 pub mod routes_static;

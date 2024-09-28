@@ -7,6 +7,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     LoginFail,
     TicketDeleteFailNoIdFound { id: u64 },
+    AuthFailNotAuthTokenCookie,
 }
 
 impl std::fmt::Display for Error {

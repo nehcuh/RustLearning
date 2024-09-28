@@ -14,6 +14,9 @@ pub use crate::error::{Error, Result};
 #[tokio::main]
 async fn main() -> Result<()> {
     let mc = ModelController::new().await?;
+    let routes_apis = web::routes_tickets::routes(mc.clone())
+        .route_layer(middleware::from_fn(web::mw_require_auth::mw_auth));
+
     let router = Router::new()
         .merge(web::routes_hello::routes_hello())
         .merge(web::routes_login::routes_login())
