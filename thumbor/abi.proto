@@ -1,4 +1,4 @@
-syntax "proto3";
+syntax = "proto3";
 
 package abi; // 这个名字会被用作编译结果，prost 会产生：abi.rs
 
@@ -33,10 +33,10 @@ message Resize {
 
 // 处理图片截取
 message Crop {
-    uint32_t x1 = 1;
-    uint32_t y1 = 2;
-    uint32_t x2 = 3;
-    uint32_t y2 = 4;
+    uint32 x1 = 1;
+    uint32 y1 = 2;
+    uint32 x2 = 3;
+    uint32 y2 = 4;
 }
 
 // 处理水平翻转
@@ -62,8 +62,8 @@ message Filter {
 
 // 处理水印
 message Watermark {
-    uint32_t x = 1;
-    uint32_t y = 2;
+    uint32 x = 1;
+    uint32 y = 2;
 }
 
 // 一个 spec 可以包含上述的处理方式之一
